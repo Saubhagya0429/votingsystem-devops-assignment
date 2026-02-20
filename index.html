@@ -9,6 +9,7 @@
 <body>
     <main class="auth-container">
         <div class="auth-wrapper">
+            <div id="auth-error" class="alert alert-error hidden" role="alert"></div>
             <!-- Login Section -->
             <section id="login-section" class="auth-section active">
                 <h1>E-Voting System</h1>
@@ -49,51 +50,31 @@
                 <form id="register-form" class="auth-form">
                     <div class="form-group">
                         <label for="register-name">Full Name</label>
-                        <input 
-                            type="text" 
-                            id="register-name" 
-                            name="name" 
+                        <input
+                            type="text"
+                            id="register-name"
+                            name="name"
                             placeholder="Enter your full name"
                             required
                         >
                     </div>
                     <div class="form-group">
                         <label for="register-email">Email Address</label>
-                        <input 
-                            type="email" 
-                            id="register-email" 
-                            name="email" 
+                        <input
+                            type="email"
+                            id="register-email"
+                            name="email"
                             placeholder="Enter your email"
                             required
                         >
                     </div>
                     <div class="form-group">
                         <label for="register-password">Password</label>
-                        <input 
-                            type="password" 
-                            id="register-password" 
-                            name="password" 
+                        <input
+                            type="password"
+                            id="register-password"
+                            name="password"
                             placeholder="Enter a strong password"
-                            required
-                        >
-                    </div>
-                    <div class="form-group">
-                        <label for="register-confirm-password">Confirm Password</label>
-                        <input 
-                            type="password" 
-                            id="register-confirm-password" 
-                            name="confirm-password" 
-                            placeholder="Confirm your password"
-                            required
-                        >
-                    </div>
-                    <div class="form-group">
-                        <label for="register-voter-id">Voter ID</label>
-                        <input 
-                            type="text" 
-                            id="register-voter-id" 
-                            name="voter-id" 
-                            placeholder="Enter your voter ID"
                             required
                         >
                     </div>
