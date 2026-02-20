@@ -1,0 +1,20 @@
+name: Deployment Pipeline
+
+on:
+  push:
+    branches:
+      - develop
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Simulate Deployment
+        run: echo "🚀 Deploying application..."
+
+      - name: Deployment Complete
+        run: echo "✅ Application deployed successfully!"
