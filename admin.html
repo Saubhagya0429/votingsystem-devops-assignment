@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>E-Voting System - Admin Results</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <header class="navbar">
+        <nav class="nav-container">
+            <h1 class="nav-brand">E-Voting System - Admin Panel</h1>
+            <ul class="nav-menu">
+                <li><span id="admin-name" class="user-info"></span></li>
+                <li><button id="admin-logout-btn" class="btn btn-secondary">Logout</button></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main class="admin-container">
+        <div class="admin-wrapper">
+            <section class="results-header">
+                <h2>Election Results</h2>
+                <div class="results-stats">
+                    <div class="stat-card">
+                        <h4>Total Votes</h4>
+                        <p id="total-votes" class="stat-number">0</p>
+                    </div>
+                    <div class="stat-card">
+                        <h4>Voting Status</h4>
+                        <p id="voting-status" class="stat-text">Active</p>
+                    </div>
+                </div>
+            </section>
+
+            <section class="results-section">
+                <h3>Candidate Results</h3>
+                <div id="results-container" class="results-container">
+                    <!-- Results will be loaded here by JavaScript -->
+                </div>
+            </section>
+
+            <section class="results-chart">
+                <h3>Vote Distribution</h3>
+                <canvas id="results-chart" width="400" height="200"></canvas>
+            </section>
+
+            <section class="admin-actions">
+                <button id="refresh-results-btn" class="btn btn-primary">Refresh Results</button>
+                <button id="export-results-btn" class="btn btn-secondary">Export Results</button>
+                <button id="start-voting-btn" class="btn btn-success">Start Voting</button>
+                <button id="end-voting-btn" class="btn btn-danger">End Voting</button>
+            </section>
+
+            <div id="admin-message" class="alert hidden">
+                <p id="admin-message-text"></p>
+            </div>
+        </div>
+    </main>
+
+    <script src="js/admin.js"></script>
+</body>
+</html>

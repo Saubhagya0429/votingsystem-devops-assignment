@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>E-Voting System - Vote</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <header class="navbar">
+        <nav class="nav-container">
+            <h1 class="nav-brand">E-Voting System</h1>
+            <ul class="nav-menu">
+                <li><span id="user-name" class="user-info"></span></li>
+                <li><button id="logout-btn" class="btn btn-secondary">Logout</button></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main class="voting-container">
+        <div class="voting-wrapper">
+            <section class="voting-instructions">
+                <h2>Welcome to the Voting Dashboard</h2>
+                <p>Please select your preferred candidate from the list below. You can only vote once.</p>
+            </section>
+
+            <section class="voting-status">
+                <div class="status-card">
+                    <p>You have <span id="votes-remaining">1</span> vote(s) remaining</p>
+                    <p id="voted-status" class="hidden">You have already voted.</p>
+                </div>
+            </section>
+
+            <section id="candidates-section" class="candidates-section">
+                <h3>Candidates</h3>
+                <div id="candidates-list" class="candidates-grid">
+                    <!-- Candidates will be loaded here by JavaScript -->
+                </div>
+            </section>
+
+            <section class="voting-actions">
+                <button id="submit-vote-btn" class="btn btn-primary" disabled>Submit Vote</button>
+                <button id="cancel-vote-btn" class="btn btn-secondary">Cancel</button>
+            </section>
+
+            <div id="vote-confirmation" class="modal hidden">
+                <div class="modal-content">
+                    <h3>Confirm Your Vote</h3>
+                    <p>You have selected: <strong id="selected-candidate-name"></strong></p>
+                    <p class="warning">This action cannot be undone. Are you sure?</p>
+                    <div class="modal-actions">
+                        <button id="confirm-vote-btn" class="btn btn-primary">Confirm Vote</button>
+                        <button id="cancel-confirm-btn" class="btn btn-secondary">Cancel</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="success-message" class="alert alert-success hidden">
+                <p>Your vote has been submitted successfully!</p>
+            </div>
+        </div>
+    </main>
+
+    <script src="js/vote.js"></script>
+</body>
+</html>
