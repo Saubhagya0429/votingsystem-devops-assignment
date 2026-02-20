@@ -2,17 +2,10 @@
 // Admin Module
 // ============================================
 
-// Mock candidates data
-const CANDIDATES = [
-    { id: 1, name: 'John Smith', party: 'Democratic Party', votes: 1250 },
-    { id: 2, name: 'Sarah Johnson', party: 'Republican Party', votes: 980 },
-    { id: 3, name: 'Michael Chen', party: 'Independent', votes: 650 },
-    { id: 4, name: 'Emma Williams', party: 'Green Party', votes: 420 },
-    { id: 5, name: 'David Martinez', party: 'Libertarian Party', votes: 310 }
-];
-
+let candidates = [];
 let isVotingActive = true;
 let refreshInterval = null;
+let autoRefreshActive = false;
 
 document.addEventListener('DOMContentLoaded', function() {
     initializeAdminPage();
@@ -22,27 +15,47 @@ document.addEventListener('DOMContentLoaded', function() {
  * Initialize admin page functionality
  */
 function initializeAdminPage() {
-    // Check if user is logged in as admin
+    // Check JWT token and admin role
+    const jwt = getJWT();
     const user = getUserSession();
-    if (!user || user.role !== 'admin') {
-        // For demo purposes, create an admin user
-        createAdminSession();
-    } else {
-        displayAdminInfo();
+    
+    // If no JWT or user not admin, show access denied
+    if (!jwt || !user || user.role !== 'admin') {
+        showAccessDenied();
+        return;
     }
+
+    // Display admin info
+    displayAdminInfo();
+
+    // Load candidates from API
+    loadCandidatesFromAPI();
 
     // Load and display results
     loadResults();
 
     // Setup event listeners
     document.getElementById('admin-logout-btn').addEventListener('click', handleAdminLogout);
-    document.getElementById('refresh-results-btn').addEventListener('click', refreshResults);
+    document.getElementById('refresh-results-btn').addEventListener('click', toggleAutoRefresh);
     document.getElementById('export-results-btn').addEventListener('click', exportResults);
     document.getElementById('start-voting-btn').addEventListener('click', startVoting);
     document.getElementById('end-voting-btn').addEventListener('click', endVoting);
+}
 
-    // Auto-refresh results every 5 seconds
-    refreshInterval = setInterval(refreshResults, 5000);
+/**
+ * Get JWT token from localStorage
+ * @returns {string|null} - JWT token or null if not exists
+ */
+function getJWT() {
+    return localStorage.getItem('jwt');
+}
+
+/**
+ * Show access denied message
+ */
+function showAccessDenied() {
+    document.getElementById('access-denied').classList.remove('hidden');
+    document.getElementById('admin-content').style.display = 'none';
 }
 
 /**
@@ -80,9 +93,58 @@ function displayAdminInfo() {
 }
 
 /**
+ * Load candidates from API
+ */
+function loadCandidatesFromAPI() {
+    const jwt = getJWT();
+    if (!jwt) {
+        showMessage('Session expired. Please login again.', 'error');
+        setTimeout(() => window.location.href = 'index.html', 1500);
+        return;
+    }
+
+    fetch('/api/candidates', {
+        method: 'GET',
+        headers: {
+            'Authorization': `Bearer ${jwt}`,
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(async res => {
+        const data = await res.json().catch(() => ({}));
+        
+        // Handle 401 Unauthorized
+        if (res.status === 401) {
+            handleUnauthorized();
+            return;
+        }
+        
+        if (!res.ok) {
+            throw new Error(data.message || 'Failed to load candidates');
+        }
+        return data;
+    })
+    .then(data => {
+        if (data && data.candidates) {
+            candidates = data.candidates;
+        }
+    })
+    .catch(err => {
+        console.error('Error loading candidates:', err);
+        showMessage('Failed to load candidates: ' + err.message, 'error');
+    });
+}
+
+/**
  * Load and display voting results
  */
 function loadResults() {
+    // If no candidates loaded yet, use empty array
+    if (candidates.length === 0) {
+        displayResults([]);
+        return;
+    }
+    
     const votes = JSON.parse(localStorage.getItem('votes')) || [];
     
     // Update total votes
@@ -95,62 +157,96 @@ function loadResults() {
         voteCounts[vote.candidateId] = (voteCounts[vote.candidateId] || 0) + 1;
     });
 
-    // Display results for each candidate
-    const resultsContainer = document.getElementById('results-container');
-    resultsContainer.innerHTML = '';
-
-    const candidatesWithVotes = CANDIDATES.map(candidate => ({
+    // Create candidate results with vote data
+    const candidatesWithVotes = candidates.map(candidate => ({
         ...candidate,
         actualVotes: voteCounts[candidate.id] || 0,
         percentage: totalVotes > 0 ? ((voteCounts[candidate.id] || 0) / totalVotes * 100).toFixed(1) : 0
     })).sort((a, b) => b.actualVotes - a.actualVotes);
 
+    displayResults(candidatesWithVotes);
+}
+
+/**
+ * Display results in table format
+ */
+function displayResults(candidatesWithVotes) {
+    const tableBody = document.getElementById('results-table-body');
+    tableBody.innerHTML = '';
+
+    if (candidatesWithVotes.length === 0) {
+        tableBody.innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 2rem;">No candidates available</td></tr>';
+        return;
+    }
+
     candidatesWithVotes.forEach(candidate => {
-        const resultCard = document.createElement('article');
-        resultCard.className = 'result-card';
-
-        resultCard.innerHTML = `
-            <div class="result-card-header">
-                <div>
-                    <div class="result-card-name">${candidate.name}</div>
-                    <div class="result-card-party">${candidate.party}</div>
-                </div>
-                <button class="btn btn-secondary btn-sm" onclick="viewCandidateDetails(${candidate.id})">View</button>
-            </div>
-            <div class="result-card-votes">
-                <p><strong>Total Votes:</strong> <span class="vote-count">${candidate.actualVotes}</span></p>
-                <p><strong>Percentage:</strong> ${candidate.percentage}%</p>
-                <div class="progress-bar">
-                    <div class="progress-fill" style="width: ${candidate.percentage}%">
-                        ${candidate.percentage > 5 ? candidate.percentage + '%' : ''}
-                    </div>
-                </div>
-            </div>
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td><strong>${candidate.name}</strong></td>
+            <td>${candidate.party}</td>
+            <td><span style="font-weight: 600; color: #007bff; font-size: 1.1rem;">${candidate.actualVotes}</span></td>
+            <td>${candidate.percentage}%</td>
         `;
-
-        resultsContainer.appendChild(resultCard);
+        tableBody.appendChild(row);
     });
 }
 
 /**
- * Refresh results
+ * Toggle auto-refresh of results
+ */
+function toggleAutoRefresh() {
+    const btn = document.getElementById('refresh-results-btn');
+    
+    if (!autoRefreshActive) {
+        // Start auto-refresh
+        autoRefreshActive = true;
+        btn.textContent = '⏸ Stop Auto-Refresh';
+        btn.style.backgroundColor = '#dc3545';
+        refreshResults();
+        refreshInterval = setInterval(refreshResults, 5000);
+        showMessage('Auto-refresh enabled (every 5 seconds)', 'info');
+    } else {
+        // Stop auto-refresh
+        autoRefreshActive = false;
+        btn.textContent = '🔄 Auto-Refresh';
+        btn.style.backgroundColor = '';
+        clearInterval(refreshInterval);
+        showMessage('Auto-refresh disabled', 'info');
+    }
+}
+
+/**
+ * Refresh results manually
  */
 function refreshResults() {
     loadResults();
-    showMessage('Results refreshed', 'info');
+    if (autoRefreshActive) {
+        console.log('Results refreshed at', new Date().toLocaleTimeString());
+    }
 }
 
 /**
  * Export results to JSON
  */
 function exportResults() {
+    if (candidates.length === 0) {
+        showMessage('No candidates data to export', 'warning');
+        return;
+    }
+
     const votes = JSON.parse(localStorage.getItem('votes')) || [];
+    const voteCounts = {};
+    votes.forEach(vote => {
+        voteCounts[vote.candidateId] = (voteCounts[vote.candidateId] || 0) + 1;
+    });
+
     const resultsData = {
         exportDate: new Date().toISOString(),
         totalVotes: votes.length,
-        candidates: CANDIDATES.map(candidate => ({
+        candidates: candidates.map(candidate => ({
             ...candidate,
-            actualVotes: votes.filter(v => v.candidateId === candidate.id).length
+            actualVotes: voteCounts[candidate.id] || 0,
+            percentage: votes.length > 0 ? ((voteCounts[candidate.id] || 0) / votes.length * 100).toFixed(1) : 0
         }))
     };
 
@@ -205,7 +301,7 @@ function endVoting() {
  * @param {number} candidateId - Candidate ID
  */
 function viewCandidateDetails(candidateId) {
-    const candidate = CANDIDATES.find(c => c.id === candidateId);
+    const candidate = candidates.find(c => c.id === candidateId);
     if (candidate) {
         const votes = JSON.parse(localStorage.getItem('votes')) || [];
         const candidateVotes = votes.filter(v => v.candidateId === candidateId);
@@ -214,11 +310,25 @@ function viewCandidateDetails(candidateId) {
 }
 
 /**
+ * Handle 401 Unauthorized errors - Clear data and redirect to login
+ */
+function handleUnauthorized() {
+    localStorage.removeItem('jwt');
+    sessionStorage.removeItem('user');
+    showMessage('Session expired. Admin access revoked.', 'error');
+    setTimeout(() => {
+        window.location.href = 'index.html';
+    }, 1500);
+}
+
+/**
  * Handle admin logout
  */
 function handleAdminLogout() {
     if (confirm('Are you sure you want to logout?')) {
         sessionStorage.removeItem('user');
+        localStorage.removeItem('jwt');
+        localStorage.removeItem('hasVoted');
         clearInterval(refreshInterval);
         window.location.href = 'index.html';
     }
