@@ -97,18 +97,22 @@ function loadCandidates() {
         card.setAttribute('data-candidate-id', candidate.id);
 
         card.innerHTML = `
-            <div class="candidate-name">${candidate.name}</div>
-            <div class="candidate-party">${candidate.party}</div>
-            <input 
-                type="checkbox" 
-                class="candidate-checkbox" 
-                data-candidate-id="${candidate.id}"
-                ${hasVoted ? 'disabled' : ''}
-            >
+            <div class="candidate-card-content">
+                <div class="candidate-name">${candidate.name}</div>
+                <div class="candidate-party">${candidate.party}</div>
+                <button 
+                    type="button"
+                    class="btn btn-primary candidate-vote-btn"
+                    data-candidate-id="${candidate.id}"
+                    ${hasVoted ? 'disabled' : ''}
+                >
+                    Vote
+                </button>
+            </div>
         `;
 
         card.addEventListener('click', function(e) {
-            if (!hasVoted) {
+            if (!hasVoted && e.target.classList.contains('candidate-vote-btn')) {
                 selectCandidate(candidate.id, candidate.name);
             }
         });
@@ -129,13 +133,11 @@ function selectCandidate(candidateId, candidateName) {
     const previousSelected = document.querySelector('.candidate-card.selected');
     if (previousSelected) {
         previousSelected.classList.remove('selected');
-        previousSelected.querySelector('.candidate-checkbox').checked = false;
     }
 
     // Select new candidate
     const selectedCard = document.querySelector(`[data-candidate-id="${candidateId}"]`);
     selectedCard.classList.add('selected');
-    selectedCard.querySelector('.candidate-checkbox').checked = true;
 
     selectedCandidate = { id: candidateId, name: candidateName };
     document.getElementById('submit-vote-btn').disabled = false;
@@ -211,7 +213,6 @@ function handleConfirmVote() {
 function handleCancelVote() {
     selectedCandidate = null;
     document.querySelector('.candidate-card.selected')?.classList.remove('selected');
-    document.querySelectorAll('.candidate-checkbox').forEach(cb => cb.checked = false);
     document.getElementById('submit-vote-btn').disabled = true;
 }
 
