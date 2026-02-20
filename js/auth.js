@@ -14,6 +14,7 @@ function initializeAuthPage() {
     const toggleRegisterBtn = document.getElementById('toggle-register');
     const loginForm = document.getElementById('login-form');
     const registerForm = document.getElementById('register-form');
+    const authError = document.getElementById('auth-error');
 
     // Toggle between login and register sections
     toggleRegisterBtn.addEventListener('click', function() {
@@ -62,29 +63,31 @@ function handleLogin(e) {
         return;
     }
 
-    // Simulate API call
-    console.log('Login attempt:', { email, password });
-
-    // Store user session (in real app, this would be from server)
-    const user = {
-        id: Date.now(),
-        email: email,
-        name: email.split('@')[0],
-        role: 'voter'
-    };
-
-    // Check if user exists and password is correct (mock validation)
-    if (validateLogin(email, password)) {
-        sessionStorage.setItem('user', JSON.stringify(user));
+    // Send POST to /api/auth/login
+    fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+    })
+    .then(async res => {
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+            const msg = data.message || 'Login failed';
+            throw new Error(msg);
+        }
+        return data;
+    })
+    .then(data => {
+        const token = data.token || data.jwt || data.accessToken;
+        if (token) {
+            localStorage.setItem('jwt', token);
+        }
         showAlert('Login successful! Redirecting...', 'success');
-
-        // Redirect to voting page after 1.5 seconds
-        setTimeout(() => {
-            window.location.href = 'vote.html';
-        }, 1500);
-    } else {
-        showAlert('Invalid email or password', 'error');
-    }
+        setTimeout(() => window.location.href = 'vote.html', 800);
+    })
+    .catch(err => {
+        showAlert(err.message || 'Invalid email or password', 'error');
+    });
 }
 
 /**
@@ -97,65 +100,43 @@ function handleRegister(e) {
     const name = document.getElementById('register-name').value;
     const email = document.getElementById('register-email').value;
     const password = document.getElementById('register-password').value;
-    const confirmPassword = document.getElementById('register-confirm-password').value;
-    const voterId = document.getElementById('register-voter-id').value;
-
     // Validate input
-    if (!name || !email || !password || !confirmPassword || !voterId) {
+    if (!name || !email || !password) {
         showAlert('Please fill in all fields', 'error');
         return;
     }
 
-    // Validate passwords match
-    if (password !== confirmPassword) {
-        showAlert('Passwords do not match', 'error');
-        return;
-    }
-
-    // Validate password strength
-    if (!validatePasswordStrength(password)) {
-        showAlert('Password must be at least 8 characters long', 'error');
-        return;
-    }
-
-    // Validate email format
     if (!validateEmail(email)) {
         showAlert('Please enter a valid email address', 'error');
         return;
     }
 
-    // Validate voter ID format
-    if (!validateVoterId(voterId)) {
-        showAlert('Please enter a valid voter ID', 'error');
+    if (!validatePasswordStrength(password)) {
+        showAlert('Password must be at least 8 characters long', 'error');
         return;
     }
 
-    // Simulate API call to register user
-    console.log('Registration attempt:', { name, email, voterId });
-
-    // Mock - check if user already exists
-    if (userExists(email)) {
-        showAlert('Email already registered', 'error');
-        return;
-    }
-
-    // Create new user
-    const user = {
-        id: Date.now(),
-        name: name,
-        email: email,
-        voterId: voterId,
-        role: 'voter'
-    };
-
-    // Store user session
-    sessionStorage.setItem('user', JSON.stringify(user));
-    showAlert('Registration successful! Redirecting...', 'success');
-
-    // Redirect to voting page after 1.5 seconds
-    setTimeout(() => {
-        window.location.href = 'vote.html';
-    }, 1500);
+    // Send POST to /api/auth/register
+    fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, email, password })
+    })
+    .then(async res => {
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+            const msg = data.message || 'Registration failed';
+            throw new Error(msg);
+        }
+        return data;
+    })
+    .then(data => {
+        showAlert('Registration successful! Please log in.', 'success');
+        switchAuthSection('login');
+    })
+    .catch(err => {
+        showAlert(err.message || 'Registration failed', 'error');
+    });
 }
 
 /**
@@ -205,9 +186,7 @@ function validateVoterId(voterId) {
  * @returns {boolean} - True if user exists
  */
 function userExists(email) {
-    // Mock: In a real app, this would check against a database
-    const registeredUsers = JSON.parse(localStorage.getItem('registeredUsers')) || [];
-    return registeredUsers.some(user => user.email === email);
+    return false;
 }
 
 /**
@@ -216,30 +195,30 @@ function userExists(email) {
  * @param {string} type - Alert type ('success', 'error', 'warning', 'info')
  */
 function showAlert(message, type = 'info') {
-    // Create alert element if it doesn't exist
+    const inline = document.getElementById('auth-error');
+    if (inline) {
+        inline.textContent = message;
+        inline.classList.remove('hidden');
+        inline.classList.remove('alert-success', 'alert-info', 'alert-warning', 'alert-error');
+        inline.classList.add(type === 'success' ? 'alert-success' : (type === 'warning' ? 'alert-warning' : 'alert-error'));
+        if (type === 'success') {
+            setTimeout(() => inline.classList.add('hidden'), 3000);
+        }
+        return;
+    }
+
+    // Fallback: floating alert
     let alertContainer = document.getElementById('alert-container');
     if (!alertContainer) {
         alertContainer = document.createElement('div');
         alertContainer.id = 'alert-container';
         document.body.insertBefore(alertContainer, document.body.firstChild);
-        alertContainer.style.cssText = `
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            z-index: 10000;
-            width: auto;
-            max-width: 400px;
-        `;
+        alertContainer.style.cssText = `position: fixed;top: 20px;right: 20px;z-index: 10000;width: auto;max-width: 400px;`;
     }
 
     const alert = document.createElement('div');
-    alert.className = `alert alert-${type}`;
+    alert.className = `alert ${type === 'success' ? 'alert-success' : 'alert-error'}`;
     alert.innerHTML = `<p>${message}</p>`;
-
     alertContainer.appendChild(alert);
-
-    // Auto-remove alert after 4 seconds
-    setTimeout(() => {
-        alert.remove();
-    }, 4000);
+    setTimeout(() => alert.remove(), 4000);
 }
