@@ -96,8 +96,10 @@ function displayAdminInfo() {
  * Load candidates from API
  */
 function loadCandidatesFromAPI() {
+    showLoading();
     const jwt = getJWT();
     if (!jwt) {
+        hideLoading();
         showMessage('Session expired. Please login again.', 'error');
         setTimeout(() => window.location.href = 'index.html', 1500);
         return;
@@ -127,11 +129,15 @@ function loadCandidatesFromAPI() {
     .then(data => {
         if (data && data.candidates) {
             candidates = data.candidates;
+            showMessage('Candidates loaded successfully', 'success', 2000);
         }
     })
     .catch(err => {
         console.error('Error loading candidates:', err);
         showMessage('Failed to load candidates: ' + err.message, 'error');
+    })
+    .finally(() => {
+        hideLoading();
     });
 }
 
@@ -204,14 +210,14 @@ function toggleAutoRefresh() {
         btn.style.backgroundColor = '#dc3545';
         refreshResults();
         refreshInterval = setInterval(refreshResults, 5000);
-        showMessage('Auto-refresh enabled (every 5 seconds)', 'info');
+        showMessage('✓ Auto-refresh enabled (every 5 seconds)', 'success', 3000);
     } else {
         // Stop auto-refresh
         autoRefreshActive = false;
         btn.textContent = '🔄 Auto-Refresh';
         btn.style.backgroundColor = '';
         clearInterval(refreshInterval);
-        showMessage('Auto-refresh disabled', 'info');
+        showMessage('✓ Auto-refresh disabled', 'info', 3000);
     }
 }
 
@@ -230,38 +236,46 @@ function refreshResults() {
  */
 function exportResults() {
     if (candidates.length === 0) {
-        showMessage('No candidates data to export', 'warning');
+        showMessage('⚠️ No candidates data to export', 'warning', 3000);
         return;
     }
 
-    const votes = JSON.parse(localStorage.getItem('votes')) || [];
-    const voteCounts = {};
-    votes.forEach(vote => {
-        voteCounts[vote.candidateId] = (voteCounts[vote.candidateId] || 0) + 1;
-    });
+    disableButton('export-results-btn');
 
-    const resultsData = {
-        exportDate: new Date().toISOString(),
-        totalVotes: votes.length,
-        candidates: candidates.map(candidate => ({
-            ...candidate,
-            actualVotes: voteCounts[candidate.id] || 0,
-            percentage: votes.length > 0 ? ((voteCounts[candidate.id] || 0) / votes.length * 100).toFixed(1) : 0
-        }))
-    };
+    try {
+        const votes = JSON.parse(localStorage.getItem('votes')) || [];
+        const voteCounts = {};
+        votes.forEach(vote => {
+            voteCounts[vote.candidateId] = (voteCounts[vote.candidateId] || 0) + 1;
+        });
 
-    const dataStr = JSON.stringify(resultsData, null, 2);
-    const dataBlob = new Blob([dataStr], { type: 'application/json' });
-    const url = URL.createObjectURL(dataBlob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `voting-results-${new Date().toISOString().split('T')[0]}.json`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+        const resultsData = {
+            exportDate: new Date().toISOString(),
+            totalVotes: votes.length,
+            candidates: candidates.map(candidate => ({
+                ...candidate,
+                actualVotes: voteCounts[candidate.id] || 0,
+                percentage: votes.length > 0 ? ((voteCounts[candidate.id] || 0) / votes.length * 100).toFixed(1) : 0
+            }))
+        };
 
-    showMessage('Results exported successfully', 'success');
+        const dataStr = JSON.stringify(resultsData, null, 2);
+        const dataBlob = new Blob([dataStr], { type: 'application/json' });
+        const url = URL.createObjectURL(dataBlob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `voting-results-${new Date().toISOString().split('T')[0]}.json`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+
+        showMessage('✓ Results exported successfully', 'success', 3000);
+    } catch (err) {
+        showMessage('✗ Failed to export results: ' + err.message, 'error');
+    } finally {
+        enableButton('export-results-btn');
+    }
 }
 
 /**
@@ -269,14 +283,22 @@ function exportResults() {
  */
 function startVoting() {
     if (isVotingActive) {
-        showMessage('Voting is already active', 'warning');
+        showMessage('⚠️ Voting is already active', 'warning', 3000);
         return;
     }
 
-    isVotingActive = true;
-    document.getElementById('voting-status').textContent = 'Active';
-    document.getElementById('voting-status').style.color = '#28a745';
-    showMessage('Voting has been started', 'success');
+    disableButton('start-voting-btn');
+
+    try {
+        isVotingActive = true;
+        document.getElementById('voting-status').textContent = 'Active';
+        document.getElementById('voting-status').style.color = '#28a745';
+        showMessage('✓ Voting has been started', 'success', 3000);
+    } catch (err) {
+        showMessage('✗ Failed to start voting: ' + err.message, 'error');
+    } finally {
+        enableButton('start-voting-btn');
+    }
 }
 
 /**
@@ -284,15 +306,23 @@ function startVoting() {
  */
 function endVoting() {
     if (!isVotingActive) {
-        showMessage('Voting is already closed', 'warning');
+        showMessage('⚠️ Voting is already closed', 'warning', 3000);
         return;
     }
 
     if (confirm('Are you sure you want to end voting? This cannot be undone.')) {
-        isVotingActive = false;
-        document.getElementById('voting-status').textContent = 'Closed';
-        document.getElementById('voting-status').style.color = '#dc3545';
-        showMessage('Voting has been ended', 'success');
+        disableButton('end-voting-btn');
+
+        try {
+            isVotingActive = false;
+            document.getElementById('voting-status').textContent = 'Closed';
+            document.getElementById('voting-status').style.color = '#dc3545';
+            showMessage('✓ Voting has been ended', 'success', 3000);
+        } catch (err) {
+            showMessage('✗ Failed to end voting: ' + err.message, 'error');
+        } finally {
+            enableButton('end-voting-btn');
+        }
     }
 }
 
@@ -315,7 +345,7 @@ function viewCandidateDetails(candidateId) {
 function handleUnauthorized() {
     localStorage.removeItem('jwt');
     sessionStorage.removeItem('user');
-    showMessage('Session expired. Admin access revoked.', 'error');
+    showMessage('✗ Session expired. Admin access revoked.', 'error');
     setTimeout(() => {
         window.location.href = 'index.html';
     }, 1500);
@@ -326,32 +356,90 @@ function handleUnauthorized() {
  */
 function handleAdminLogout() {
     if (confirm('Are you sure you want to logout?')) {
+        disableButton('admin-logout-btn');
         sessionStorage.removeItem('user');
         localStorage.removeItem('jwt');
         localStorage.removeItem('hasVoted');
         clearInterval(refreshInterval);
-        window.location.href = 'index.html';
+        showMessage('✓ Logged out successfully', 'success', 1500);
+        setTimeout(() => {
+            window.location.href = 'index.html';
+        }, 1500);
     }
 }
 
 /**
- * Show message to admin
+ * Show alert message with auto-dismiss
  * @param {string} message - Message to display
- * @param {string} type - Message type ('success', 'error', 'warning', 'info')
+ * @param {string} type - Alert type ('success', 'error', 'warning', 'info')
+ * @param {number} duration - Duration in ms (0 = manual close only)
  */
-function showMessage(message, type = 'info') {
-    const messageDiv = document.getElementById('admin-message');
-    const messageText = document.getElementById('admin-message-text');
-
-    // Update classes
-    messageDiv.className = `alert alert-${type}`;
-    messageText.textContent = message;
-
-    // Show message
-    messageDiv.classList.remove('hidden');
-
-    // Auto-hide after 3 seconds
+function showMessage(message, type = 'info', duration = 4000) {
+    const alertDiv = document.getElementById('admin-alert');
+    const alertText = document.getElementById('admin-alert-text');
+    
+    // Remove existing animation class to restart it
+    alertDiv.classList.add('hidden');
+    
+    // Update alert content
+    alertText.textContent = message;
+    alertDiv.className = `admin-alert alert alert-${type}`;
+    
+    // Show alert
     setTimeout(() => {
-        messageDiv.classList.add('hidden');
-    }, 3000);
+        alertDiv.classList.remove('hidden');
+    }, 10);
+    
+    // Auto-hide if duration is set
+    if (duration > 0) {
+        setTimeout(() => {
+            closeAlert();
+        }, duration);
+    }
+}
+
+/**
+ * Close alert
+ */
+function closeAlert() {
+    const alertDiv = document.getElementById('admin-alert');
+    alertDiv.classList.add('hidden');
+}
+
+/**
+ * Show loading spinner
+ */
+function showLoading() {
+    document.getElementById('loading-spinner').classList.remove('hidden');
+}
+
+/**
+ * Hide loading spinner
+ */
+function hideLoading() {
+    document.getElementById('loading-spinner').classList.add('hidden');
+}
+
+/**
+ * Disable button and show loading state
+ * @param {string} btnId - Button ID
+ */
+function disableButton(btnId) {
+    const btn = document.getElementById(btnId);
+    if (btn) {
+        btn.disabled = true;
+        btn.classList.add('loading');
+    }
+}
+
+/**
+ * Enable button and remove loading state
+ * @param {string} btnId - Button ID
+ */
+function enableButton(btnId) {
+    const btn = document.getElementById(btnId);
+    if (btn) {
+        btn.disabled = false;
+        btn.classList.remove('loading');
+    }
 }

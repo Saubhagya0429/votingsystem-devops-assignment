@@ -24,8 +24,20 @@
             <button onclick="window.location.href='vote.html'" class="btn btn-primary" style="margin-top: 1rem;">Return to Voting Page</button>
         </div>
         <div id="admin-content" class="admin-wrapper">
+            <!-- Alert messages -->
+            <div id="admin-alert" class="admin-alert hidden" role="alert">
+                <span id="admin-alert-text"></span>
+                <button class="alert-close" onclick="closeAlert()">×</button>
+            </div>
+
+            <!-- Loading spinner -->
+            <div id="loading-spinner" class="loading-spinner hidden">
+                <div class="spinner"></div>
+                <p>Loading results...</p>
+            </div>
+
             <section class="results-header">
-                <h2>Election Results</h2>
+                <h2>Election Results Dashboard</h2>
                 <div class="results-stats">
                     <div class="stat-card">
                         <h4>Total Votes</h4>
@@ -69,14 +81,10 @@
             </section>
 
             <section class="admin-actions">
-                <button id="export-results-btn" class="btn btn-secondary">Export Results</button>
-                <button id="start-voting-btn" class="btn btn-success">Start Voting</button>
-                <button id="end-voting-btn" class="btn btn-danger">End Voting</button>
+                <button id="export-results-btn" class="btn btn-secondary">📥 Export Results</button>
+                <button id="start-voting-btn" class="btn btn-success">▶️ Start Voting</button>
+                <button id="end-voting-btn" class="btn btn-danger">⏹️ End Voting</button>
             </section>
-
-            <div id="admin-message" class="alert hidden">
-                <p id="admin-message-text"></p>
-            </div>
         </div>
         </div>
     </main>
