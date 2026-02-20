@@ -2,15 +2,7 @@
 // Voting Module
 // ============================================
 
-// Mock candidates data
-const CANDIDATES = [
-    { id: 1, name: 'John Smith', party: 'Democratic Party', votes: 1250 },
-    { id: 2, name: 'Sarah Johnson', party: 'Republican Party', votes: 980 },
-    { id: 3, name: 'Michael Chen', party: 'Independent', votes: 650 },
-    { id: 4, name: 'Emma Williams', party: 'Green Party', votes: 420 },
-    { id: 5, name: 'David Martinez', party: 'Libertarian Party', votes: 310 }
-];
-
+let candidates = [];
 let selectedCandidate = null;
 let hasVoted = false;
 
@@ -33,13 +25,11 @@ function initializeVotingPage() {
     document.getElementById('user-name').textContent = `Welcome, ${user.name}`;
 
     // Check if user has already voted
-    if (checkIfVoted(user.id)) {
+    const voteStatus = checkIfUserVoted();
+    if (voteStatus) {
         hasVoted = true;
         displayVotedStatus();
     }
-
-    // Load candidates
-    loadCandidates();
 
     // Setup event listeners
     document.getElementById('logout-btn').addEventListener('click', handleLogout);
@@ -47,6 +37,9 @@ function initializeVotingPage() {
     document.getElementById('cancel-vote-btn').addEventListener('click', handleCancelVote);
     document.getElementById('confirm-vote-btn').addEventListener('click', handleConfirmVote);
     document.getElementById('cancel-confirm-btn').addEventListener('click', closeConfirmation);
+
+    // Load candidates from API
+    loadCandidatesFromAPI();
 }
 
 /**
@@ -59,13 +52,20 @@ function getUserSession() {
 }
 
 /**
- * Check if user has already voted
- * @param {number} userId - User ID
+ * Check if user has already voted by checking storage
  * @returns {boolean} - True if user has voted
  */
-function checkIfVoted(userId) {
-    const votes = JSON.parse(localStorage.getItem('votes')) || [];
-    return votes.some(vote => vote.userId === userId);
+function checkIfUserVoted() {
+    const votedStatus = localStorage.getItem('hasVoted');
+    return votedStatus === 'true';
+}
+
+/**
+ * Get JWT token from localStorage
+ * @returns {string|null} - JWT token or null if not exists
+ */
+function getJWT() {
+    return localStorage.getItem('jwt');
 }
 
 /**
@@ -85,13 +85,57 @@ function displayVotedStatus() {
 }
 
 /**
- * Load candidates and display them
+ * Load candidates from API and display them
  */
-function loadCandidates() {
+function loadCandidatesFromAPI() {
+    const jwt = getJWT();
+    if (!jwt) {
+        showAlert('Session expired. Please login again.', 'error');
+        setTimeout(() => window.location.href = 'index.html', 1500);
+        return;
+    }
+
+    fetch('/api/candidates', {
+        method: 'GET',
+        headers: {
+            'Authorization': `Bearer ${jwt}`,
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(async res => {
+        const data = await res.json().catch(() => ({}));
+        
+        // Handle 401 Unauthorized
+        if (res.status === 401) {
+            handleUnauthorized();
+            return;
+        }
+        
+        if (!res.ok) {
+            throw new Error(data.message || 'Failed to load candidates');
+        }
+        return data;
+    })
+    .then(data => {
+        if (data && data.candidates) {
+            candidates = data.candidates;
+            renderCandidates();
+        }
+    })
+    .catch(err => {
+        console.error('Error loading candidates:', err);
+        showAlert('Failed to load candidates: ' + err.message, 'error');
+    });
+}
+
+/**
+ * Render candidates to the DOM
+ */
+function renderCandidates() {
     const candidatesList = document.getElementById('candidates-list');
     candidatesList.innerHTML = '';
 
-    CANDIDATES.forEach(candidate => {
+    candidates.forEach(candidate => {
         const card = document.createElement('article');
         card.className = 'candidate-card';
         card.setAttribute('data-candidate-id', candidate.id);
@@ -158,53 +202,75 @@ function handleSubmitVote() {
 }
 
 /**
- * Handle confirm vote
+ * Handle confirm vote - Send vote to API
  */
 function handleConfirmVote() {
-    const user = getUserSession();
-
-    if (!selectedCandidate || !user) {
+    if (!selectedCandidate) {
         showAlert('Error: Invalid vote data', 'error');
         return;
     }
 
-    // Record the vote
-    const vote = {
-        userId: user.id,
-        userEmail: user.email,
-        candidateId: selectedCandidate.id,
-        candidateName: selectedCandidate.name,
-        timestamp: new Date().toISOString()
-    };
+    const jwt = getJWT();
+    if (!jwt) {
+        showAlert('Session expired. Please login again.', 'error');
+        setTimeout(() => window.location.href = 'index.html', 1500);
+        return;
+    }
 
-    // Store vote in localStorage
-    const votes = JSON.parse(localStorage.getItem('votes')) || [];
-    votes.push(vote);
-    localStorage.setItem('votes', JSON.stringify(votes));
+    // Disable button to prevent double submission
+    document.getElementById('confirm-vote-btn').disabled = true;
 
-    // Update candidate vote count
-    const updatedCandidates = CANDIDATES.map(candidate => {
-        if (candidate.id === selectedCandidate.id) {
-            return { ...candidate, votes: candidate.votes + 1 };
+    // Send vote to API
+    fetch('/api/vote', {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${jwt}`,
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            candidateId: selectedCandidate.id
+        })
+    })
+    .then(async res => {
+        const data = await res.json().catch(() => ({}));
+        
+        // Handle 401 Unauthorized
+        if (res.status === 401) {
+            handleUnauthorized();
+            return;
         }
-        return candidate;
+        
+        if (!res.ok) {
+            throw new Error(data.message || 'Failed to submit vote');
+        }
+        return data;
+    })
+    .then(() => {
+        // Mark as voted in localStorage
+        localStorage.setItem('hasVoted', 'true');
+        
+        // Close modal
+        closeConfirmation();
+
+        // Display success message
+        document.getElementById('vote-confirmation').classList.add('hidden');
+        document.getElementById('success-message').classList.remove('hidden');
+
+        // Mark as voted
+        hasVoted = true;
+        displayVotedStatus();
+
+        // Redirect to admin results page after 2 seconds
+        setTimeout(() => {
+            window.location.href = 'admin.html';
+        }, 2000);
+    })
+    .catch(err => {
+        console.error('Error submitting vote:', err);
+        showAlert('Failed to submit vote: ' + err.message, 'error');
+        // Re-enable button on error
+        document.getElementById('confirm-vote-btn').disabled = false;
     });
-
-    // Close modal
-    closeConfirmation();
-
-    // Display success message
-    document.getElementById('vote-confirmation').classList.add('hidden');
-    document.getElementById('success-message').classList.remove('hidden');
-
-    // Mark as voted
-    hasVoted = true;
-    displayVotedStatus();
-
-    // Redirect to admin results page after 2 seconds
-    setTimeout(() => {
-        window.location.href = 'admin.html';
-    }, 2000);
 }
 
 /**
@@ -224,13 +290,29 @@ function closeConfirmation() {
 }
 
 /**
- * Handle logout
+ * Handle logout - Clear all session data
  */
 function handleLogout() {
     if (confirm('Are you sure you want to logout?')) {
+        // Clear all stored data
         sessionStorage.removeItem('user');
+        localStorage.removeItem('jwt');
+        localStorage.removeItem('hasVoted');
         window.location.href = 'index.html';
     }
+}
+
+/**
+ * Handle 401 Unauthorized errors - Clear data and redirect to login
+ */
+function handleUnauthorized() {
+    // Clear stored tokens
+    localStorage.removeItem('jwt');
+    sessionStorage.removeItem('user');
+    showAlert('Session expired. Please login again.', 'error');
+    setTimeout(() => {
+        window.location.href = 'index.html';
+    }, 1500);
 }
 
 /**
