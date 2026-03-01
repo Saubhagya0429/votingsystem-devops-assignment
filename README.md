@@ -116,13 +116,22 @@ docker-compose --version
 ### Build and Run Using Docker
 
 Run the following command inside the project folder:
+## Build Docker Image
+docker build -t votingapp .
 
+## Run with Docker
+docker run -p 3000:80 votingapp
+
+## Using Docker Compose
 docker-compose up --build
 
 This will:
 - Build the Docker image
 - Create the container
 - Start the NGINX server
+- If port 3000 is busy, change it in docker-compose.yml
+- Rebuild container after changing files: docker-compose build
+- Check logs: docker logs voting_system_container
 
 ---
 

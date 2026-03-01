@@ -2,8 +2,22 @@ version: '3.8'
 
 services:
   votingapp:
-    build: .
+    build:
+      context: .
     container_name: voting_system_container
     ports:
       - "3000:80"
     restart: always
+    networks:
+      - voting_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    volumes:
+      - ./html:/usr/share/nginx/html
+
+networks:
+  voting_network:
+    driver: bridge
