@@ -1,0 +1,9 @@
+version: '3.8'
+
+services:
+  votingapp:
+    build: .
+    container_name: voting_system_container
+    ports:
+      - "3000:80"
+    restart: always

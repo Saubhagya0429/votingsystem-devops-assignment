@@ -96,4 +96,47 @@ npm run dev
 -UI/UX Improvements
 -CI/CD Pipeline Integration	
 -Production Deployment 
+---
+
+## Docker Setup Instructions
+
+This project is containerized using Docker to ensure consistent deployment.
+
+### Prerequisites
+
+Make sure Docker Desktop is installed.
+
+To check:
+
+docker --version
+docker-compose --version
+
+---
+
+### Build and Run Using Docker
+
+Run the following command inside the project folder:
+
+docker-compose up --build
+
+This will:
+- Build the Docker image
+- Create the container
+- Start the NGINX server
+
+---
+
+### Access the Application
+
+Open your browser and go to:
+
+http://localhost:3000
+
+---
+
+### Stop the Application
+
+To stop the container:
+
+docker-compose down
 
